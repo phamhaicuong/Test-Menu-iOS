@@ -12,10 +12,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Theos and SDKs (Bypass API Rate Limit)
+      - name: Cai dat Theos chuan (Co chia khoa Bypass API)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --recursive https://github.com/theos/theos.git ~/theos
-          git clone https://github.com/theos/sdks.git ~/theos/sdks
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
           echo "THEOS=~/theos" >> $GITHUB_ENV
 
       - name: Build Dylib
@@ -23,7 +24,7 @@ jobs:
           make clean
           make
           
-      - name: Upload Artifact
+      - name: Xuat file thanh pham
         uses: actions/upload-artifact@v4
         with:
           name: HaiCuong_ModMenu_Dylib
