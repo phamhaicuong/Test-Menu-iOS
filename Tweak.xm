@@ -96,7 +96,7 @@ static uintptr_t scanForPattern(const char *patternStr) {
     return result;
 }
 
-// ==== MÓC NỐI VÀO GAME BẰNG SUBSTRATE ====
+// ==== THỰC THI HOOK ====
 static void setupHooks() {
     uintptr_t addrCurrent = scanForPattern(PATTERN_SET_CURRENT);
     if (addrCurrent) {
@@ -109,100 +109,90 @@ static void setupHooks() {
     }
 }
 
-// ==== GIAO DIỆN MENU HẢI CƯỜNG ====
-static void applyScores(UIAlertController *alert) {
-    UITextField *tfCur = alert.textFields[0];
-    UITextField *tfHigh = alert.textFields[1];
-    if (!tfCur || !tfHigh) return;
+// ==== GIAO DIỆN HẢI CƯỜNG MOD ====
+%hook UIWindow
 
-    int cur = [tfCur.text intValue];
-    int high = [tfHigh.text intValue];
-    if (cur < 0) cur = 0;
-    if (high < 0) high = 0;
-    if (high < cur) high = cur;
-
-    g_userCurrent = cur;
-    g_userHigh = high;
-
-    UIAlertController *confirm = [UIAlertController alertControllerWithTitle:@"✅ Thành công"
-                                                                     message:[NSString stringWithFormat:@"Đã cập nhật!\nHiện tại: %d\nCao nhất: %d", cur, high]
-                                                              preferredStyle:UIAlertControllerStyleAlert];
-    [confirm addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-    UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
-    if (root) [root presentViewController:confirm animated:YES completion:nil];
+- (void)makeKeyAndVisible {
+    %orig;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            
+            if (self.rootViewController) {
+                UIButton *menuBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+                menuBtn.frame = CGRectMake(20, 100, 60, 60); 
+                menuBtn.backgroundColor = [UIColor blackColor];
+                menuBtn.layer.cornerRadius = 30;
+                [menuBtn setTitle:@"⚙" forState:UIControlStateNormal];
+                menuBtn.titleLabel.font = [UIFont systemFontOfSize:30];
+                
+                [menuBtn addTarget:self action:@selector(hc_showMenu) forControlEvents:UIControlEventTouchUpInside];
+                
+                UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(hc_handlePan:)];
+                [menuBtn addGestureRecognizer:pan];
+                
+                [self addSubview:menuBtn];
+            }
+        });
+    });
 }
 
-static void showMenu() {
-    UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
-    if (!root) return;
-
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🏆 HẢI CƯỜNG MOD"
-                                                                   message:@"Nhập điểm bạn muốn thay đổi:"
+%new
+- (void)hc_showMenu {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🏆 HẢI CƯỜNG MOD" 
+                                                                   message:@"Nhập điểm bạn muốn thay đổi:" 
                                                             preferredStyle:UIAlertControllerStyleAlert];
-
+    
     [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
         tf.placeholder = @"Điểm hiện tại";
         tf.keyboardType = UIKeyboardTypeNumberPad;
         tf.text = [NSString stringWithFormat:@"%d", g_userCurrent];
     }];
+    
     [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
         tf.placeholder = @"Điểm cao nhất";
         tf.keyboardType = UIKeyboardTypeNumberPad;
         tf.text = [NSString stringWithFormat:@"%d", g_userHigh];
     }];
-
-    [alert addAction:[UIAlertAction actionWithTitle:@"Áp dụng" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        applyScores(alert);
+    
+    [alert addAction:[UIAlertAction actionWithTitle:@"Áp dụng" style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
+        
+        UITextField *tfCur = alert.textFields[0];
+        UITextField *tfHigh = alert.textFields[1];
+        
+        int cur = [tfCur.text intValue];
+        int high = [tfHigh.text intValue];
+        if (cur < 0) cur = 0;
+        if (high < 0) high = 0;
+        if (high < cur) high = cur;
+        
+        g_userCurrent = cur;
+        g_userHigh = high;
+        
+        UIAlertController *confirm = [UIAlertController alertControllerWithTitle:@"✅ Thành công" 
+                                                                         message:[NSString stringWithFormat:@"Đã cập nhật!\nHiện tại: %d\nCao nhất: %d", cur, high] 
+                                                                  preferredStyle:UIAlertControllerStyleAlert];
+        [confirm addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+        [self.rootViewController presentViewController:confirm animated:YES completion:nil];
     }]];
+    
     [alert addAction:[UIAlertAction actionWithTitle:@"Đóng" style:UIAlertActionStyleCancel handler:nil]];
-
-    [root presentViewController:alert animated:YES completion:nil];
+    
+    [self.rootViewController presentViewController:alert animated:YES completion:nil];
 }
 
-// ==== NÚT TRÔI NỔI (FLOATING BUTTON) ====
-static UIButton *floatingButton = nil;
-static UIWindow *overlayWindow = nil;
-
-static void handlePan(UIPanGestureRecognizer *gesture) {
-    UIButton *btn = (UIButton *)gesture.view;
-    CGPoint translation = [gesture translationInView:btn.superview];
-    CGRect newFrame = btn.frame;
-    newFrame.origin.x += translation.x;
-    newFrame.origin.y += translation.y;
-    btn.frame = newFrame;
-    [gesture setTranslation:CGPointZero inView:btn.superview];
+%new
+- (void)hc_handlePan:(UIPanGestureRecognizer *)recognizer {
+    UIView *button = recognizer.view;
+    CGPoint translation = [recognizer translationInView:button.superview];
+    button.center = CGPointMake(button.center.x + translation.x, button.center.y + translation.y);
+    [recognizer setTranslation:CGPointZero inView:button.superview];
 }
 
-static void floatingButtonTapped() {
-    showMenu();
-}
+%end
 
-static void createFloatingButton() {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        overlayWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        overlayWindow.windowLevel = UIWindowLevelStatusBar + 100;
-        overlayWindow.backgroundColor = [UIColor clearColor];
-        overlayWindow.userInteractionEnabled = YES;
-        overlayWindow.hidden = NO;
-
-        floatingButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        floatingButton.frame = CGRectMake(20, 100, 60, 60);
-        floatingButton.backgroundColor = [UIColor blackColor];
-        floatingButton.layer.cornerRadius = 30;
-        [floatingButton setTitle:@"⚙" forState:UIControlStateNormal];
-        floatingButton.titleLabel.font = [UIFont systemFontOfSize:30];
-
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:floatingButton action:@selector(handlePan:)];
-        [floatingButton addGestureRecognizer:pan];
-        [floatingButton addTarget:self action:@selector(floatingButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-
-        [overlayWindow addSubview:floatingButton];
-    });
-}
-
+// ==== KHỞI TẠO HOOK KHI APP LOAD ====
 %ctor {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        createFloatingButton();
-        setupHooks();
-    });
+    setupHooks();
 }
