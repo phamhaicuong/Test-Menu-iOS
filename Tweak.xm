@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import <mach-o/dyld.h>
+#import <mach-o/loader.h> // <--- THƯ VIỆN BỊ THIẾU KHIẾN LỖI ĐỎ NÃY GIỜ
 #include <substrate.h> 
 #include <string.h>
 #include <stdlib.h>
@@ -119,7 +120,8 @@ static void setupHooks() {
     dispatch_once(&onceToken, ^{
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             
-            if (self.rootViewController) {
+            UIWindow *win = (UIWindow *)self;
+            if (win.rootViewController) {
                 UIButton *menuBtn = [UIButton buttonWithType:UIButtonTypeCustom];
                 menuBtn.frame = CGRectMake(20, 100, 60, 60); 
                 menuBtn.backgroundColor = [UIColor blackColor];
@@ -127,12 +129,12 @@ static void setupHooks() {
                 [menuBtn setTitle:@"⚙" forState:UIControlStateNormal];
                 menuBtn.titleLabel.font = [UIFont systemFontOfSize:30];
                 
-                [menuBtn addTarget:self action:@selector(hc_showMenu) forControlEvents:UIControlEventTouchUpInside];
+                [menuBtn addTarget:win action:@selector(hc_showMenu) forControlEvents:UIControlEventTouchUpInside];
                 
-                UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(hc_handlePan:)];
+                UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:win action:@selector(hc_handlePan:)];
                 [menuBtn addGestureRecognizer:pan];
                 
-                [self addSubview:menuBtn];
+                [win addSubview:menuBtn];
             }
         });
     });
@@ -140,6 +142,7 @@ static void setupHooks() {
 
 %new
 - (void)hc_showMenu {
+    UIWindow *win = (UIWindow *)self;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🏆 HẢI CƯỜNG MOD" 
                                                                    message:@"Nhập điểm bạn muốn thay đổi:" 
                                                             preferredStyle:UIAlertControllerStyleAlert];
@@ -174,12 +177,12 @@ static void setupHooks() {
                                                                          message:[NSString stringWithFormat:@"Đã cập nhật!\nHiện tại: %d\nCao nhất: %d", cur, high] 
                                                                   preferredStyle:UIAlertControllerStyleAlert];
         [confirm addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-        [self.rootViewController presentViewController:confirm animated:YES completion:nil];
+        [win.rootViewController presentViewController:confirm animated:YES completion:nil];
     }]];
     
     [alert addAction:[UIAlertAction actionWithTitle:@"Đóng" style:UIAlertActionStyleCancel handler:nil]];
     
-    [self.rootViewController presentViewController:alert animated:YES completion:nil];
+    [win.rootViewController presentViewController:alert animated:YES completion:nil];
 }
 
 %new
