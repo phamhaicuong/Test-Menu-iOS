@@ -1,8 +1,10 @@
-%include <UIKit/UIKit.h>
-%include <Foundation/Foundation.h>
-%include <objc/runtime.h>
-%include <mach-o/dyld.h>
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import <objc/runtime.h>
+#import <mach-o/dyld.h>
 #include <substrate.h> 
+#include <string.h>
+#include <stdlib.h>
 
 #define PATTERN_SET_CURRENT "48 89 5C 24 08 57 48 83 EC 20 8B 91 ?? ?? ?? ?? 48 8B 01 FF 90 ?? ?? ?? ?? 48 8B 5C 24 30 48 83 C4 20 5F C3"
 #define PATTERN_SET_HIGH    "48 89 5C 24 08 57 48 83 EC 20 8B 91 ?? ?? ?? ?? 48 8B 01 FF 90 ?? ?? ?? ?? 48 8B 5C 24 30 48 83 C4 20 5F C3"
