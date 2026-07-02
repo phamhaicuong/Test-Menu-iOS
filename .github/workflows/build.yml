@@ -1,0 +1,28 @@
+name: Build iOS Dylib
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+
+      - name: Cai dat Theos
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+          echo "THEOS=~/theos" >> $GITHUB_ENV
+
+      - name: Build file Dylib
+        run: |
+          make
+          
+      - name: Xuat file thanh pham
+        uses: actions/upload-artifact@v4
+        with:
+          name: MenuTest_Dylib
+          path: .theos/obj/debug/*.dylib
